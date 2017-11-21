@@ -20,9 +20,13 @@ options = scriptine.misc.Options(
     url = 'https://github.com/olt/scriptine',
     classifiers=[
       'License :: OSI Approved :: MIT License',
-      'Programming Language :: Python',
+      'Programming Language :: Python :: 2',
+      'Programming Language :: Python :: 3'
       ],
     packages = ['scriptine'],
+    install_requires=[
+        'future'
+    ],
     zip_safe = False,
     cmdclass = {
         'zipdist': zipdist,

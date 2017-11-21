@@ -5,7 +5,7 @@ from contextlib import contextmanager
 try:
     from cStringIO import StringIO
 except ImportError:
-    from StringIO import StringIO
+    from io import StringIO
 
 state = set()
 

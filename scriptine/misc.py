@@ -1,8 +1,31 @@
+from __future__ import print_function
+from future.utils import iteritems
 import sys
 import re
 import inspect
 from distutils.core import Command
 from scriptine import log
+
+
+def _make_parameters(signature):
+    """Return actual parameters (that can be passed to a call) corresponding to
+    signature (the formal parameters). Copes with bare `*` (see PEP 3102) e.g.
+    shutil.copyfile's signature is now "src, dst, *, follow_symlinks=True":
+    return "src, dst, *, follow_symlinks=follow_symlinks"
+    """
+    params = []
+    star = False
+    for param in signature.split(','):
+        if param.strip() == '*':
+            star = True
+        elif star:
+            # a bare star means everything afterwards must be passed as named
+            name, _ = param.split('=')
+            params.append('%s=%s' % (name, name))
+        else:
+            params.append(param)
+    return ','.join(params)
+
 
 class DistutilsCommand(Command):
     user_options = []
@@ -11,7 +34,7 @@ class DistutilsCommand(Command):
 
 def dict_to_options(d):
     d = Options(d)
-    for k, v in d.iteritems():
+    for k, v in iteritems(d):
         if isinstance(v, dict):
             d[k] = dict_to_options(v)
     return d
@@ -26,7 +49,7 @@ class Options(dict):
     """
     def __repr__(self):
         args = ', '.join(['%s=%r' % (key, value) for key, value in
-            self.iteritems()])
+            iteritems(self)])
         return '%s(%s)' % (self.__class__.__name__, args)
     
     def __getattr__(self, name):
@@ -93,14 +116,22 @@ class FunctionMaker(object):
             self.doc = func.__doc__
             self.module = func.__module__
             if inspect.isfunction(func):
-                self.signature = inspect.formatargspec(
-                    formatvalue=lambda val: "", *inspect.getargspec(func))[1:-1]
-                self.defaults = func.func_defaults
+                try:
+                    self.signature = inspect.formatargspec(
+                        formatvalue=lambda val: "", *inspect.getargspec(func))[1:-1]
+                except ValueError:
+                    # func has keyword-only args: these are supported by FullArgSpec's
+                    # kwonlydefaults; keep any default values in the signature
+                    self.signature = inspect.formatargspec(
+                        *inspect.getfullargspec(func))[1:-1]
+                self.defaults = func.__defaults__
                 self.dict = func.__dict__.copy()
         if name:
             self.name = name
         if signature is not None:
             self.signature = signature
+        if self.signature is not None:
+            self.parameters = _make_parameters(self.signature)
         if defaults:
             self.defaults = defaults
         if doc:
@@ -119,11 +150,11 @@ class FunctionMaker(object):
         func.__name__ = self.name
         func.__doc__ = getattr(self, 'doc', None)
         func.__dict__ = getattr(self, 'dict', {})
-        func.func_defaults = getattr(self, 'defaults', None)
+        func.__defaults__ = getattr(self, 'defaults', None)
         callermodule = sys._getframe(3).f_globals.get('__name__', '?')
         func.__module__ = getattr(self, 'module', callermodule)
         func.__dict__.update(kw)
- 
+
     def make(self, src_templ, evaldict=None, addsource=False, **attrs):
         "Make a new function from a given template and update the signature"
         src = src_templ % vars(self) # expand name and signature
@@ -134,17 +165,17 @@ class FunctionMaker(object):
         name = mo.group(1) # extract the function name
         reserved_names = set([name] + [
             arg.strip(' *') for arg in self.signature.split(',')])
-        for n, v in evaldict.iteritems():
+        for n, v in iteritems(evaldict):
             if n in reserved_names:
                 raise NameError('%s is overridden in\n%s' % (n, src))
         if not src.endswith('\n'): # add a newline just for safety
             src += '\n'
         try:
             code = compile(src, '<string>', 'single')
-            exec code in evaldict
+            exec(code, evaldict)
         except:
-            print >> sys.stderr, 'Error in generated code:'
-            print >> sys.stderr, src
+            print('Error in generated code:', file=sys.stderr)
+            print(src, file=sys.stderr)
             raise
         func = evaldict[name]
         if addsource:
@@ -167,7 +198,7 @@ def decorator(caller, func=None):
     else: # returns a decorated function
         fun = FunctionMaker(func)
         src = """def %(name)s(%(signature)s):
-    return _call_(_func_, %(signature)s)"""
+    return _call_(_func_, %(parameters)s)"""
         return fun.make(src, dict(_func_=func, _call_=caller), undecorated=func)
 
 # --- end decorator ---
@@ -188,7 +219,7 @@ def _log_function_call(func, *args, **kw):
     if args:
         message += ' ' + ' '.join(map(str, args))
     if kw:
-        kw_str = ' '.join(['%s %r' % (k, v) for k, v in kw.iteritems()])
+        kw_str = ' '.join(['%s %r' % (k, v) for k, v in iteritems(kw)])
         message += '(' + kw_str + ')'
     log.info(message)
 

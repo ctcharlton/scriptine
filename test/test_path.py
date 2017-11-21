@@ -16,6 +16,7 @@ Author:  Jason Orendorff <jason@jorendorff.com>
 Date:    7 Mar 2004
 
 """
+from __future__ import print_function
 
 import unittest
 import codecs, os, random, shutil, tempfile, time, stat, sys
@@ -162,8 +163,8 @@ class TempDirTestCase(unittest.TestCase):
                 self.assert_(t0 <= ct <= t1)
 
             time.sleep(sleep_time)
-            fobj = file(f, 'ab')
-            fobj.write('some bytes')
+            fobj = open(f, 'ab')
+            fobj.write(b'some bytes')
             fobj.close()
 
             time.sleep(sleep_time)
@@ -221,7 +222,7 @@ class TempDirTestCase(unittest.TestCase):
         # Try a test with 20 files
         files = [d / ('%d.txt' % i) for i in range(20)]
         for f in files:
-            fobj = file(f, 'w')
+            fobj = open(f, 'w')
             fobj.write('some text\n')
             fobj.close()
         try:
@@ -254,8 +255,8 @@ class TempDirTestCase(unittest.TestCase):
             self.failIf(foo.exists())
             self.assert_(d.exists())
 
-            foo.mkdir(0750)
-            boz.makedirs(0700)
+            foo.mkdir(0o750)
+            boz.makedirs(0o700)
             try:
                 self.assert_(boz.isdir())
             finally:
@@ -309,7 +310,7 @@ class TempDirTestCase(unittest.TestCase):
         self.assert_(testFile.bytes() == testCopy2.bytes())
         
         # Test install file
-        testFile.install(testInstall, chmod=0740)
+        testFile.install(testInstall, chmod=0o740)
         stats = stat.S_IMODE(testInstall.stat().st_mode)
         
         self.assert_(stats == 

@@ -7,7 +7,7 @@ d = path('/home/guido/bin')
 for f in d.files('*.py'):
     f.chmod(0755)
 
-This module requires Python 2.2 or later.
+This module requires Python 2.3 or later.
 
 
 URL:     http://www.jorendorff.com/articles/python/path
@@ -27,6 +27,7 @@ Date:    9 Mar 2007
 #   - Perhaps support arguments to touch().
 
 from __future__ import generators
+from past.builtins import basestring, unicode
 
 from scriptine.misc import dry, dry_guard
 
@@ -62,22 +63,8 @@ try:
 except AttributeError:
     pass
 
-# Pre-2.3 workaround for booleans
-try:
-    True, False
-except NameError:
-    True, False = 1, 0
-
-# Pre-2.3 workaround for basestring.
-try:
-    basestring
-except NameError:
-    basestring = (str, unicode)
-
 # Universal newline support
-_textmode = 'r'
-if hasattr(file, 'newlines'):
-    _textmode = 'U'
+_textmode = 'U'
 
 
 class TreeWalkWarning(Warning):
@@ -528,7 +515,7 @@ class path(_base):
 
     def open(self, mode='r'):
         """ Open this file.  Return a file object. """
-        return file(self, mode)
+        return open(self, mode)
 
     def bytes(self):
         """ Open this file, read all bytes, return them as a string. """
@@ -561,8 +548,7 @@ class path(_base):
     def text(self, encoding=None, errors='strict'):
         r""" Open this file, read it in, return the content as a string.
 
-        This uses 'U' mode in Python 2.3 and later, so '\r\n' and '\r'
-        are automatically translated to '\n'.
+        This uses 'U' mode, so '\r\n' and '\r' are automatically translated to '\n'.
 
         Optional arguments:
 
@@ -699,7 +685,7 @@ class path(_base):
                 translated to '\n'.  If false, newline characters are
                 stripped off.  Default is True.
 
-        This uses 'U' mode in Python 2.3 and later.
+        This uses 'U' mode, so '\r\n' and '\r' are automatically translated to '\n'.
         """
         if encoding is None and retain:
             f = self.open(_textmode)
@@ -818,7 +804,7 @@ class path(_base):
     ctime = os.path.getctime
 
     def newer(self, other):
-        return self.mtime > other.mtime
+        return self.mtime() > other.mtime()
 
     size = os.path.getsize
 
@@ -903,15 +889,15 @@ class path(_base):
     # --- Create/delete operations on directories
 
     @dry_guard
-    def mkdir(self, mode=0777):
+    def mkdir(self, mode=0o777):
         os.mkdir(self, mode)
 
     @dry_guard
-    def makedirs(self, mode=0777):
+    def makedirs(self, mode=0o777):
         os.makedirs(self, mode)
 
     @dry_guard
-    def ensure_dir(self, mode=0777):
+    def ensure_dir(self, mode=0o777):
         """
         Make sure the directory exists, create if necessary.
         """
@@ -934,7 +920,7 @@ class path(_base):
         """ Set the access/modified times of this file to the current time.
         Create the file if it does not exist.
         """
-        fd = os.open(self, os.O_WRONLY | os.O_CREAT, 0666)
+        fd = os.open(self, os.O_WRONLY | os.O_CREAT, 0o666)
         os.close(fd)
         os.utime(self, None)
 
@@ -996,7 +982,7 @@ class path(_base):
     # --- Convenience for scriptine
 
     @dry_guard
-    def install(self, to, chmod=0644):
+    def install(self, to, chmod=0o644):
         """
         Copy data and set mode to 'chmod'.
         """

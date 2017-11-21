@@ -16,7 +16,7 @@ def test_path_guard():
     
     options.dry = True
     
-    path('/tmp/foobarbaz.txt').install('hello', chmod=0644)
+    path('/tmp/foobarbaz.txt').install('hello', chmod=0o644)
     
 
 def teardown_module():

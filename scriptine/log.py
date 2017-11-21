@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 __all__ = ['warn', 'error', 'debug', 'info', 'mark']
@@ -19,7 +20,7 @@ def dec_log_level(n=1):
     _level += n
 
 def log(msg, *args):
-    print >>sys.stderr, msg % args
+    print(msg % args, file=sys.stderr)
     sys.stderr.flush()
 
 def mark(msg, *args):
